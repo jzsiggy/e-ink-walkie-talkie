@@ -5,6 +5,7 @@
 #include "supabase.h"
 #include "eink.h"
 #include "ui.h"
+#include "battery.h"
 #include "modes.h"
 
 /* Records connectivity; true if the state flipped, meaning the e-ink needs a
@@ -20,6 +21,13 @@ static void showStale(const char* reason) {
   bool haveContent = cache.mine.have || cache.theirs.have;
   oledMsg(reason, haveContent ? "Marking stale..." : "No signal screen...");
   drawEink();
+}
+
+/* True when the rounded battery level differs from what the e-ink shows and the
+   raw value is clearly past the boundary, so noise around e.g. 65% cannot flip
+   the panel between 60 and 70 on consecutive polls. */
+static bool batteryStepChanged(int pct) {
+  return batteryStep(pct) != cache.batteryPct && abs(pct - cache.batteryPct) > BATT_HYSTERESIS;
 }
 
 /* Button-wake path: the typing session. No polling can start in here:
@@ -77,7 +85,10 @@ void composeLoop() {
    blocked until the screen goes dark and the device sleeps. */
 void pollSequence(bool firstBoot) {
   peripheralsOn();                                 // status only; carry on even if the OLED is missing
-  oledMsg("Waking up...");
+  int pct = batteryPercent();                      // before WiFi: board idle, no load sag
+  char batt[16];
+  snprintf(batt, sizeof batt, "Battery %d%%", batteryStep(pct));
+  oledMsg("Waking up...", batt);
   delay(300);
 
   oledMsg("Connecting to WiFi...");
@@ -100,7 +111,7 @@ void pollSequence(bool firstBoot) {
         oledMsg("New message!", "Updating e-ink...");
         drawEink();                                // ~2 s flash
         oledMsg("Done!");
-      } else if (firstBoot || backOnline) {        // draw the (unchanged) state, or clear the marker
+      } else if (firstBoot || backOnline || batteryStepChanged(pct)) {   // unchanged state, marker cleared, or battery stepped
         oledMsg("Updating e-ink...");
         drawEink();
         oledMsg("Done!");

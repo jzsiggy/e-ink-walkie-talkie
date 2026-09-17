@@ -15,6 +15,7 @@ struct Cache {
   MsgSlot mine;             // my last sent message
   MsgSlot theirs;           // newest message from anyone else
   bool    offline;          // last refresh failed; e-ink is showing the stale marker
+  int     batteryPct;       // rounded value currently drawn on the e-ink (0 = not yet drawn)
 };
 
 extern Cache cache;

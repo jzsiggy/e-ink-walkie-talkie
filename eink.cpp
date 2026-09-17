@@ -5,11 +5,12 @@
 #include "Adafruit_ThinkInk.h"
 #include "config.h"
 #include "state.h"
+#include "battery.h"
 #include "eink.h"
 
 static ThinkInk_290_Grayscale4_EAAMFGN epd(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY, &SPI);
 
-static const char* OFFLINE_LABEL     = "disconnected...";   // top-right, built-in font
+static const char* OFFLINE_LABEL     = "disconnected...";   // top-right, left of the battery
 static const char* NO_SIGNAL_TITLE   = "No Signal";         // FreeSans 24pt, centred
 static const char* NO_SIGNAL_SUB     = "mas eu te amo";     // built-in font, centred
 static const int   NO_SIGNAL_TITLE_Y = 68;                  // baseline
@@ -81,9 +82,20 @@ static void wrapPrint(Adafruit_GFX& g, const char* s, int x, int y,
   }
 }
 
+/* Top-right corner: battery step, preceded by the stale marker when offline.
+   Built-in font. Longest case "disconnected...  100%" is 126 px, clear of the
+   top label which ends by x~142. */
+static void drawCorner(int batteryPct, bool showOffline) {
+  char corner[32];
+  if (showOffline) snprintf(corner, sizeof corner, "%s  %d%%", OFFLINE_LABEL, batteryPct);
+  else               snprintf(corner, sizeof corner, "%d%%", batteryPct);
+  epd.setFont(NULL);
+  printRightAligned(epd, corner, TOP_LABEL_Y);
+}
+
 /* Normal layout: my last message on top, theirs below. When offline, the
    cached messages stay and a small marker flags them as possibly stale. */
-static void drawMessages() {
+static void drawMessages(int batteryPct) {
   /* --- top pane, built-in font: what I last sent --- */
   epd.setFont(NULL);                               // built-in: y = top of text
   epd.setCursor(EINK_MARGIN, TOP_LABEL_Y);
@@ -93,7 +105,7 @@ static void drawMessages() {
   } else {
     epd.print("YOU  (nothing sent yet)");          // edge case
   }
-  if (cache.offline) printRightAligned(epd, OFFLINE_LABEL, TOP_LABEL_Y);
+  drawCorner(batteryPct, cache.offline);
   if (cache.mine.have) {
     wrapPrint(epd, cache.mine.text, EINK_MARGIN, TOP_MSG_Y, EINK_TEXT_W, TOP_MAX_LINES, TOP_LINE_H);
   }
@@ -117,7 +129,8 @@ static void drawMessages() {
 
 /* Cold boot with no WiFi and nothing cached: there is no stale content to
    show, so say so. */
-static void drawNoSignal() {
+static void drawNoSignal(int batteryPct) {
+  drawCorner(batteryPct, false);                   // the title already says it
   epd.setFont(&FreeSans24pt7b);
   printCentered(epd, NO_SIGNAL_TITLE, NO_SIGNAL_TITLE_Y);
   epd.setFont(NULL);
@@ -125,14 +138,17 @@ static void drawNoSignal() {
 }
 
 void drawEink() {
+  int batteryPct = batteryStep(batteryPercent());  // callers have WiFi off here: idle enough to read
+  cache.batteryPct = batteryPct;                   // the cache holds exactly what the panel shows
+
   epd.begin(THINKINK_GRAYSCALE4);
   epd.clearBuffer();
   epd.setTextColor(EPD_BLACK);                     // all text in full black
   epd.setTextSize(1);
   epd.setTextWrap(false);                          // wrapPrint owns line breaks
 
-  if (cache.offline && !cache.mine.have && !cache.theirs.have) drawNoSignal();
-  else                                                          drawMessages();
+  if (cache.offline && !cache.mine.have && !cache.theirs.have) drawNoSignal(batteryPct);
+  else                                                          drawMessages(batteryPct);
 
   epd.setFont(NULL);                               // restore default
   epd.display();

@@ -14,6 +14,8 @@
  *  - Any failed refresh (no WiFi or server error) redraws the e-ink once
  *    with "disconnected..." top-right; a cold boot with nothing cached shows
  *    the "No Signal" screen instead. Cleared on the next successful fetch.
+ *  - Battery level (2x200k divider on GPIO 35, no fuel gauge) is shown top-right
+ *    in 10% steps; a step change triggers one redraw on the next poll.
  *
  * Files:
  *   config.h            pins, ids, sizes, timing, e-ink layout

@@ -19,6 +19,7 @@ constexpr int     QT_POWER  = 2;       // HIGH = OLED + keyboard powered
 constexpr int     WAKE_BTN  = 13;      // wing button on the D13 position (verify by pressing)
 constexpr uint8_t OLED_ADDR = 0x3D;
 constexpr uint8_t KBD_ADDR  = 0x5F;
+constexpr int     BATT_PIN  = 35;      // on-board 2x200k divider (input-only GPIO, A13)
 
 /* ---- buffers ---- */
 constexpr size_t MSG_BUF     = 220;    // stored message text incl. NUL
@@ -30,6 +31,10 @@ constexpr size_t COMPOSE_MAX = 190;    // max characters typed per message
 constexpr unsigned long WIFI_TIMEOUT_MS = 10000;
 constexpr unsigned long COMPOSE_IDLE_MS = 60000;   // no keystroke -> give up (draft lost)
 constexpr unsigned long QT_SETTLE_MS    = 500;     // OLED power-on settle
+
+/* ---- battery ---- */
+constexpr int BATT_SAMPLES    = 16;    // ADC reads averaged per measurement
+constexpr int BATT_HYSTERESIS = 7;     // points past a 10% boundary before the step changes
 
 /* ---- e-ink layout (2.9" 296x128, landscape) ---- */
 constexpr int EINK_W        = 296;
