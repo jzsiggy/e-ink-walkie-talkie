@@ -52,6 +52,11 @@ void oledMsg(const char* line1, const char* line2, const char* line3) {
   oled.display();
 }
 
+void oledClear() {
+  oled.clearDisplay();
+  oled.display();
+}
+
 /* Text being typed: top-left, wrapping character-wise like a terminal. */
 void oledShowDraft(const String& draft) {
   oled.clearDisplay();

@@ -16,6 +16,8 @@
  *    the "No Signal" screen instead. Cleared on the next successful fetch.
  *  - Battery level (2x200k divider on GPIO 35, no fuel gauge) is shown top-right
  *    in 10% steps; a step change triggers one redraw on the next poll.
+ *    At or below BATT_LOW_PCT the poll ends with three "Charge me!" flashes
+ *    and the sleep timer stretches to POLL_LOW_MIN.
  *
  * Files:
  *   config.h            pins, ids, sizes, timing, e-ink layout
@@ -35,17 +37,21 @@
 
 #include "driver/rtc_io.h"
 #include "config.h"
+#include "state.h"
 #include "net.h"
 #include "ui.h"
 #include "modes.h"
 
 static void goToSleep() {
+  oledMsg("Falling asleep...");                    // every path ends here, so the cue is consistent
+  delay(400);
   peripheralsOff();                                // OLED + keyboard off; screen dark
   wifiOff();
   rtc_gpio_pullup_en((gpio_num_t)WAKE_BTN);
   rtc_gpio_pulldown_dis((gpio_num_t)WAKE_BTN);
   esp_sleep_enable_ext0_wakeup((gpio_num_t)WAKE_BTN, 0);   // press = LOW
-  esp_sleep_enable_timer_wakeup(POLL_MIN * 60ULL * 1000000ULL);
+  uint64_t minutes = cache.lowBattery ? POLL_LOW_MIN : POLL_MIN;   // stretch the interval when low
+  esp_sleep_enable_timer_wakeup(minutes * 60ULL * 1000000ULL);
   esp_deep_sleep_start();
 }
 

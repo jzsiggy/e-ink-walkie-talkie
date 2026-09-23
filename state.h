@@ -7,7 +7,7 @@ struct MsgSlot {
   int64_t id;               // newest message id seen for this slot
   bool    have;             // false until the first message arrives
   char    text[MSG_BUF];
-  char    time[TIME_BUF];   // local "HH:MM"
+  char    time[TIME_BUF];   // local "DD Mon HH:MM"
   char    name[NAME_BUF];   // sender's first name
 };
 
@@ -16,6 +16,7 @@ struct Cache {
   MsgSlot theirs;           // newest message from anyone else
   bool    offline;          // last refresh failed; e-ink is showing the stale marker
   int     batteryPct;       // rounded value currently drawn on the e-ink (0 = not yet drawn)
+  bool    lowBattery;       // last poll saw <= BATT_LOW_PCT; stretches the sleep timer
 };
 
 extern Cache cache;

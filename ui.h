@@ -5,5 +5,6 @@
 bool peripheralsOn();                                   // power rail up, I2C + OLED init; true if OLED answered
 void peripheralsOff();                                  // power rail down: screen dark, keyboard off
 void oledMsg(const char* line1, const char* line2 = "", const char* line3 = "");   // up to 3 centred lines
+void oledClear();                                       // blank screen (stays powered)
 void oledShowDraft(const String& draft);
 char readKey();                                         // 0 when no key is pending

@@ -30,6 +30,16 @@ static bool batteryStepChanged(int pct) {
   return batteryStep(pct) != cache.batteryPct && abs(pct - cache.batteryPct) > BATT_HYSTERESIS;
 }
 
+/* Three on/off flashes, ~2 s total, so a low battery is hard to miss. */
+static void flashChargeMe() {
+  for (int i = 0; i < 3; i++) {
+    oledMsg("Charge me!");
+    delay(400);
+    oledClear();
+    delay(300);
+  }
+}
+
 /* Button-wake path: the typing session. No polling can start in here:
    the POLL_MIN timer is only armed at sleep time. */
 void composeLoop() {
@@ -86,10 +96,11 @@ void composeLoop() {
 void pollSequence(bool firstBoot) {
   peripheralsOn();                                 // status only; carry on even if the OLED is missing
   int pct = batteryPercent();                      // before WiFi: board idle, no load sag
+  cache.lowBattery = batteryStep(pct) <= BATT_LOW_PCT;
   char batt[16];
   snprintf(batt, sizeof batt, "Battery %d%%", batteryStep(pct));
   oledMsg("Waking up...", batt);
-  delay(300);
+  delay(1000);                                     // long enough to read the battery figure
 
   oledMsg("Connecting to WiFi...");
   if (!wifiConnect()) {
@@ -108,11 +119,11 @@ void pollSequence(bool firstBoot) {
     } else {
       bool backOnline = markOffline(false);
       if (r == FETCH_CHANGED) {
-        oledMsg("New message!", "Updating e-ink...");
+        oledMsg("New message!", "Updating display...");
         drawEink();                                // ~2 s flash
         oledMsg("Done!");
       } else if (firstBoot || backOnline || batteryStepChanged(pct)) {   // unchanged state, marker cleared, or battery stepped
-        oledMsg("Updating e-ink...");
+        oledMsg("Updating display...");
         drawEink();
         oledMsg("Done!");
       } else {
@@ -122,6 +133,5 @@ void pollSequence(bool firstBoot) {
     }
   }
 
-  oledMsg("Falling asleep...");
-  delay(400);
+  if (cache.lowBattery) flashChargeMe();         // after the poll, before "Falling asleep..."
 }

@@ -4,16 +4,8 @@
 #include <ArduinoJson.h>
 #include "config.h"
 #include "state.h"
+#include "textfmt.h"
 #include "supabase.h"
-
-/* "2024-05-01T13:07:22.123+00:00" -> "13:07" shifted by TZ_OFFSET. */
-static void isoToLocalHHMM(const char* iso, char* out, size_t n) {
-  if (strlen(iso) < 16) { strlcpy(out, "--:--", n); return; }
-  int h = (iso[11]-'0')*10 + (iso[12]-'0');
-  int m = (iso[14]-'0')*10 + (iso[15]-'0');
-  h = ((h + TZ_OFFSET) % 24 + 24) % 24;
-  snprintf(out, n, "%02d:%02d", h, m);
-}
 
 /* One authenticated JSON POST. Returns the HTTP status (negative on client
    error). Fills *response with the body when non-null and the request went out. */
@@ -33,7 +25,8 @@ static int supaPost(const char* path, const String& body, String* response,
   return code;
 }
 
-/* Copy one {user, message} entry into a slot if it is newer than what we hold.
+/* Copy one {user, message} entry into a slot if it is newer than what we hold,
+   shaping text for the display on the way in (ASCII only, local timestamp).
    A null entry (never sent / nobody wrote yet) is a no-op. */
 static bool applyEntry(MsgSlot& slot, JsonVariantConst entry) {
   if (entry.isNull()) return false;
@@ -41,9 +34,10 @@ static bool applyEntry(MsgSlot& slot, JsonVariantConst entry) {
   if (id <= slot.id) return false;
   slot.id   = id;
   slot.have = true;
-  strlcpy(slot.text, entry["message"]["content"] | "", sizeof slot.text);
-  strlcpy(slot.name, entry["user"]["first_name"]  | "?", sizeof slot.name);
-  isoToLocalHHMM(entry["message"]["created_at"] | "", slot.time, sizeof slot.time);
+  toDisplayAscii(entry["message"]["content"] | "", slot.text, sizeof slot.text);
+  toDisplayAscii(entry["user"]["first_name"]  | "", slot.name, sizeof slot.name);
+  if (!slot.name[0]) strlcpy(slot.name, "?", sizeof slot.name);
+  isoToLocalStamp(entry["message"]["created_at"] | "", TZ_OFFSET, slot.time, sizeof slot.time);
   return true;
 }
 

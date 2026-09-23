@@ -6,7 +6,7 @@
 
 /* ---- per-device settings ---- */
 constexpr long     MY_USER_ID = 1;     // your row's id in the users table
-constexpr int      TZ_OFFSET  = 0;     // hours from UTC, e.g. -3, +2
+constexpr int      TZ_OFFSET  = -3;    // hours from UTC: Sao Paulo (no DST)
 constexpr uint64_t POLL_MIN   = 1;     // minutes between mailbox checks
 
 /* ---- pins: values proven during bring-up ---- */
@@ -24,7 +24,7 @@ constexpr int     BATT_PIN  = 35;      // on-board 2x200k divider (input-only GP
 /* ---- buffers ---- */
 constexpr size_t MSG_BUF     = 220;    // stored message text incl. NUL
 constexpr size_t NAME_BUF    = 24;
-constexpr size_t TIME_BUF    = 8;      // "HH:MM"
+constexpr size_t TIME_BUF    = 16;     // "DD Mon HH:MM"
 constexpr size_t COMPOSE_MAX = 190;    // max characters typed per message
 
 /* ---- timing ---- */
@@ -35,6 +35,8 @@ constexpr unsigned long QT_SETTLE_MS    = 500;     // OLED power-on settle
 /* ---- battery ---- */
 constexpr int BATT_SAMPLES    = 16;    // ADC reads averaged per measurement
 constexpr int BATT_HYSTERESIS = 7;     // points past a 10% boundary before the step changes
+constexpr int      BATT_LOW_PCT = 20;  // displayed step at or below this is "low"
+constexpr uint64_t POLL_LOW_MIN = 20;  // minutes between polls when low
 
 /* ---- e-ink layout (2.9" 296x128, landscape) ---- */
 constexpr int EINK_W        = 296;
