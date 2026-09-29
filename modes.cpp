@@ -6,6 +6,7 @@
 #include "eink.h"
 #include "ui.h"
 #include "battery.h"
+#include "portal.h"
 #include "modes.h"
 
 /* Records connectivity; true if the state flipped, meaning the e-ink needs a
@@ -38,6 +39,22 @@ static void flashChargeMe() {
     oledClear();
     delay(300);
   }
+}
+
+/* Button C woke us. True if it is still held after HOLD_POLL_MS, meaning the
+   user wants a poll rather than a compose session. The hint on the OLED makes
+   the hold discoverable; a quick tap usually releases during the OLED settle
+   and never sees it. */
+bool waitForHold() {
+  peripheralsOn();                                 // includes the QT_SETTLE_MS wait
+  if (digitalRead(WAKE_BTN) == HIGH) return false; // already released: a tap
+  oledMsg("Hold to check", "messages...");
+  unsigned long t0 = millis();
+  while (digitalRead(WAKE_BTN) == LOW) {
+    if (millis() - t0 >= HOLD_POLL_MS) return true;   // hint stays up until the poll draws its first screen
+    delay(10);
+  }
+  return false;
 }
 
 /* Button-wake path: the typing session. No polling can start in here:
@@ -134,4 +151,32 @@ void pollSequence(bool firstBoot) {
   }
 
   if (cache.lowBattery) flashChargeMe();         // after the poll, before "Falling asleep..."
+}
+
+/* Button A wake: run the hotspot until credentials are saved, forgotten, or
+   nobody uses it for PORTAL_TIMEOUT_MS. */
+void setupLoop() {
+  peripheralsOn();
+  PortalResult r = portalRun();
+  if (r == PORTAL_SAVED) {
+    pollSequence(true);                            // draw live data right away
+  } else if (r == PORTAL_FORGOTTEN) {
+    oledMsg("WiFi forgotten", "Updating display...");
+    drawEink();                                    // unconfigured -> No Signal + hint
+  } else if (r == PORTAL_CANCELLED) {
+    oledMsg("Setup cancelled");
+    delay(1000);
+  } else {
+    oledMsg("Setup timed out");
+    delay(1000);
+  }
+}
+
+/* Any wake while no WiFi is stored. The e-ink is drawn only on cold boot
+   (drawPanel) so a stray button press does not flash the panel. */
+void notConfiguredNotice(bool drawPanel) {
+  peripheralsOn();
+  oledMsg("No Signal");                            // the e-ink carries the instructions
+  if (drawPanel) drawEink();                       // ~2 s, message stays visible meanwhile
+  else           delay(2500);
 }

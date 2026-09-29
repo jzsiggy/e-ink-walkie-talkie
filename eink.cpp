@@ -6,15 +6,18 @@
 #include "config.h"
 #include "state.h"
 #include "battery.h"
+#include "net.h"
 #include "eink.h"
 
 static ThinkInk_290_Grayscale4_EAAMFGN epd(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY, &SPI);
 
 static const char* OFFLINE_LABEL     = "disconnected...";   // top-right, left of the battery
-static const char* NO_SIGNAL_TITLE   = "No Signal";         // FreeSans 24pt, centred
-static const char* NO_SIGNAL_SUB     = "mas eu te amo";     // built-in font, centred
-static const int   NO_SIGNAL_TITLE_Y = 68;                  // baseline
-static const int   NO_SIGNAL_SUB_Y   = 82;                  // top of glyphs
+static const char* NO_SIGNAL_TITLE   = "No Signal";         // configured but unreachable, nothing cached
+static const char* NO_SIGNAL_SUB     = "mas eu te amo";
+static const char* WELCOME_TITLE     = "Hi, love!";         // no WiFi stored yet
+static const char* WELCOME_HINT      = "press the top left button to configure wifi";
+static const int   BIG_TITLE_Y       = 68;                  // FreeSans 24pt baseline (both full screens)
+static const int   BIG_SUB_Y         = 82;                  // built-in font top (both full screens)
 
 /* Text measurement in the currently selected font. Requires text wrap to be
    off on `g`, otherwise GFX folds long strings at the panel edge and the width
@@ -127,15 +130,20 @@ static void drawMessages(int batteryPct) {
   }
 }
 
-/* Cold boot with no WiFi and nothing cached: there is no stale content to
-   show, so say so. */
-static void drawNoSignal(int batteryPct) {
-  drawCorner(batteryPct, false);                   // the title already says it
+/* One big centred line in FreeSans 24pt and one small one beneath it. */
+static void drawFullScreen(int batteryPct, const char* title, const char* sub) {
+  drawCorner(batteryPct, false);                   // marker not needed: the screen itself says it
   epd.setFont(&FreeSans24pt7b);
-  printCentered(epd, NO_SIGNAL_TITLE, NO_SIGNAL_TITLE_Y);
+  printCentered(epd, title, BIG_TITLE_Y);
   epd.setFont(NULL);
-  printCentered(epd, NO_SIGNAL_SUB, NO_SIGNAL_SUB_Y);
+  printCentered(epd, sub, BIG_SUB_Y);
 }
+
+/* Configured, but a cold boot could not reach the network and nothing is cached. */
+static void drawNoSignal(int batteryPct) { drawFullScreen(batteryPct, NO_SIGNAL_TITLE, NO_SIGNAL_SUB); }
+
+/* No WiFi stored yet: greet and point at the setup button. */
+static void drawWelcome(int batteryPct)  { drawFullScreen(batteryPct, WELCOME_TITLE, WELCOME_HINT); }
 
 void drawEink() {
   int batteryPct = batteryStep(batteryPercent());  // callers have WiFi off here: idle enough to read
@@ -147,8 +155,11 @@ void drawEink() {
   epd.setTextSize(1);
   epd.setTextWrap(false);                          // wrapPrint owns line breaks
 
-  if (cache.offline && !cache.mine.have && !cache.theirs.have) drawNoSignal(batteryPct);
-  else                                                          drawMessages(batteryPct);
+  bool unconfigured = !wifiConfigured();
+  bool nothingCached = !cache.mine.have && !cache.theirs.have;
+  if      (unconfigured)                     drawWelcome(batteryPct);
+  else if (cache.offline && nothingCached)   drawNoSignal(batteryPct);
+  else                                       drawMessages(batteryPct);
 
   epd.setFont(NULL);                               // restore default
   epd.display();

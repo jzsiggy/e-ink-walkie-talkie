@@ -10,22 +10,30 @@ static const int OLED_H      = 64;
 static const int OLED_LINE_H = 10;                 // 8 px glyphs + 2 px gap
 
 static Adafruit_SSD1306 oled(OLED_W, OLED_H, &Wire, -1);
+static bool ready = false;                       // rail up and OLED initialised this wake
 
+/* Idempotent: a second call in the same wake returns at once, so paths that
+   init twice (hold check then compose, setup then poll) pay no extra settle. */
 bool peripheralsOn() {
+  if (ready) return true;
   digitalWrite(QT_POWER, HIGH);
   delay(QT_SETTLE_MS);                             // OLED settle time
   Wire.begin();
   bool ok = oled.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
   if (ok) {
+    oled.clearDisplay();                           // the panel RAM powers up as noise and begin()
+    oled.display();                                // turns the display on: blank it right away
     oled.setTextSize(1);
     oled.setTextColor(SSD1306_WHITE);
     oled.setTextWrap(false);                       // measured layout; the draft turns wrap on itself
+    ready = true;
   }
   return ok;
 }
 
 void peripheralsOff() {
   digitalWrite(QT_POWER, LOW);
+  ready = false;
 }
 
 /* Print `s` horizontally centred with its top at `y`. Text wrap must be off,

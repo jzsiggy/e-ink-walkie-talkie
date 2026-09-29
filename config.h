@@ -1,5 +1,6 @@
 /* Compile-time configuration: device identity, pins, sizes, timing, layout.
- * Credentials live in secrets.h (included at the bottom). */
+ * Supabase credentials live in secrets.h (included at the bottom).
+ * WiFi credentials are NOT here: they are stored in NVS by the setup hotspot. */
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
@@ -7,7 +8,7 @@
 /* ---- per-device settings ---- */
 constexpr long     MY_USER_ID = 1;     // your row's id in the users table
 constexpr int      TZ_OFFSET  = -3;    // hours from UTC: Sao Paulo (no DST)
-constexpr uint64_t POLL_MIN   = 1;     // minutes between mailbox checks
+constexpr uint64_t POLL_MIN   = 30;    // minutes between mailbox checks
 
 /* ---- pins: values proven during bring-up ---- */
 constexpr int8_t  EPD_CS    = 15;
@@ -16,7 +17,8 @@ constexpr int8_t  SRAM_CS   = 32;
 constexpr int8_t  EPD_RESET = -1;
 constexpr int8_t  EPD_BUSY  = -1;
 constexpr int     QT_POWER  = 2;       // HIGH = OLED + keyboard powered
-constexpr int     WAKE_BTN  = 13;      // wing button on the D13 position (verify by pressing)
+constexpr int     WAKE_BTN  = 13;      // wing button C (top-right): compose/send
+constexpr int     CFG_BTN   = 27;      // wing button A (top-left): WiFi setup hotspot (RTC GPIO)
 constexpr uint8_t OLED_ADDR = 0x3D;
 constexpr uint8_t KBD_ADDR  = 0x5F;
 constexpr int     BATT_PIN  = 35;      // on-board 2x200k divider (input-only GPIO, A13)
@@ -31,12 +33,18 @@ constexpr size_t COMPOSE_MAX = 190;    // max characters typed per message
 constexpr unsigned long WIFI_TIMEOUT_MS = 10000;
 constexpr unsigned long COMPOSE_IDLE_MS = 60000;   // no keystroke -> give up (draft lost)
 constexpr unsigned long QT_SETTLE_MS    = 500;     // OLED power-on settle
+constexpr unsigned long HOLD_POLL_MS    = 1200;    // hold button C this long to poll instead of compose
+
+/* ---- WiFi setup hotspot ---- */
+constexpr const char* PORTAL_SSID     = "bluesandgreens";    // open network
+constexpr unsigned long PORTAL_TIMEOUT_MS = 300000;           // 5 min with nobody using it -> sleep
+constexpr unsigned long PORTAL_TEST_MS    = 15000;            // wait for a test connection to the new network
 
 /* ---- battery ---- */
 constexpr int BATT_SAMPLES    = 16;    // ADC reads averaged per measurement
 constexpr int BATT_HYSTERESIS = 7;     // points past a 10% boundary before the step changes
 constexpr int      BATT_LOW_PCT = 20;  // displayed step at or below this is "low"
-constexpr uint64_t POLL_LOW_MIN = 20;  // minutes between polls when low
+constexpr uint64_t POLL_LOW_MIN = 120; // minutes between polls when low
 
 /* ---- e-ink layout (2.9" 296x128, landscape) ---- */
 constexpr int EINK_W        = 296;
